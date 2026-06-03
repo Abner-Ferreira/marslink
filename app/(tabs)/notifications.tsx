@@ -1,19 +1,14 @@
 import { Ionicons } from '@expo/vector-icons'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useEffect, useMemo, useState } from 'react'
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { Card } from '@/components/layout/card/Card'
 import { colors } from '@/constants/theme'
-import {
-  NotificationType,
-  mission,
-  notifications as initialNotifications,
-} from '@/data/marslink'
+import { API_URL, apiGet, apiPost } from '@/services/api'
 import { styles } from '@/styles/notifications-styles'
-
-type Notification = (typeof initialNotifications)[number]
+import { Mission, Notification, NotificationType } from '@/types/marslink'
 
 type NotificationFilter = 'all' | 'unread' | 'warning' | 'system'
 
@@ -41,30 +36,61 @@ const simulatedEvents = [
 ]
 
 export default function NotificationsScreen() {
-  const [notifications, setNotifications] =
-    useState<Notification[]>(initialNotifications)
-
+  const [mission, setMission] = useState<Mission | null>(null)
+  const [notifications, setNotifications] = useState<Notification[]>([])
   const [selectedFilter, setSelectedFilter] = useState<NotificationFilter>('all')
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    loadData()
+  }, [])
 
   useEffect(() => {
     const interval = setInterval(() => {
+      createSimulatedNotification()
+    }, 15000)
+
+    return () => clearInterval(interval)
+  }, [])
+
+  async function loadData() {
+    try {
+      setLoading(true)
+
+      const [missionData, notificationsData] = await Promise.all([
+        apiGet<Mission>('/mission'),
+        apiGet<Notification[]>('/notifications'),
+      ])
+
+      setMission(missionData)
+      setNotifications(sortNotifications(notificationsData))
+    } catch (error) {
+      console.error('Erro ao carregar notificações:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function createSimulatedNotification() {
+    try {
       const randomEvent =
         simulatedEvents[Math.floor(Math.random() * simulatedEvents.length)]
 
-      const newNotification: Notification = {
-        id: String(Date.now()),
+      const createdNotification = await apiPost<Notification>('/notifications', {
         title: randomEvent.title,
         description: randomEvent.description,
         time: getCurrentTime(),
         type: randomEvent.type,
         unread: true,
-      }
+      })
 
-      setNotifications((current) => [newNotification, ...current])
-    }, 15000)
-
-    return () => clearInterval(interval)
-  }, [])
+      setNotifications((current) =>
+        sortNotifications([createdNotification, ...current]),
+      )
+    } catch (error) {
+      console.error('Erro ao criar notificação simulada:', error)
+    }
+  }
 
   const unreadCount = notifications.filter((item) => item.unread).length
   const warningCount = notifications.filter((item) => item.type === 'warning').length
@@ -86,25 +112,52 @@ export default function NotificationsScreen() {
     return notifications
   }, [notifications, selectedFilter])
 
-  function markAsRead(id: string) {
-    setNotifications((current) =>
-      current.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              unread: false,
-            }
-          : item,
-      ),
-    )
+  async function markAsRead(id: number) {
+    try {
+      const updatedNotification = await apiPatch<Notification>(
+        `/notifications/${id}/read`,
+        {},
+      )
+
+      setNotifications((current) =>
+        current.map((item) =>
+          item.id === id ? updatedNotification : item,
+        ),
+      )
+    } catch (error) {
+      console.error('Erro ao marcar notificação como lida:', error)
+    }
   }
 
-  function markAllAsRead() {
-    setNotifications((current) =>
-      current.map((item) => ({
-        ...item,
-        unread: false,
-      })),
+  async function markAllAsRead() {
+    try {
+      const updatedNotifications = await apiPatch<Notification[]>(
+        '/notifications/read-all',
+        {},
+      )
+
+      setNotifications(sortNotifications(updatedNotifications))
+    } catch (error) {
+      console.error('Erro ao marcar todas como lidas:', error)
+    }
+  }
+
+  if (loading || !mission) {
+    return (
+      <SafeAreaView edges={['top']} style={styles.container}>
+        <View
+          style={{
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+            paddingHorizontal: 20,
+          }}
+        >
+          <Text style={{ color: colors.white, fontSize: 16, fontWeight: '800' }}>
+            Carregando alertas...
+          </Text>
+        </View>
+      </SafeAreaView>
     )
   }
 
@@ -144,7 +197,7 @@ export default function NotificationsScreen() {
           <Text style={styles.heroTitle}>{unreadCount} alertas não lidos</Text>
 
           <Text style={styles.heroText}>
-            Eventos automáticos simulam um sistema vivo de missão, com alertas,
+            Eventos automáticos registram informações da missão, alertas,
             mensagens, tarefas e status operacional.
           </Text>
 
@@ -157,7 +210,7 @@ export default function NotificationsScreen() {
             <View style={styles.heroInfo}>
               <Ionicons name="radio-outline" size={16} color="#FED7AA" />
               <Text style={styles.heroInfoText}>
-                Janela: {mission.communicationWindow}
+                Janela: {mission.communication_window}
               </Text>
             </View>
           </View>
@@ -269,6 +322,31 @@ export default function NotificationsScreen() {
       </ScrollView>
     </SafeAreaView>
   )
+}
+
+async function apiPatch<T>(endpoint: string, body: unknown): Promise<T> {
+  const response = await fetch(`${API_URL}${endpoint}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  })
+
+  if (!response.ok) {
+    throw new Error(`Erro ao atualizar ${endpoint}`)
+  }
+
+  return response.json()
+}
+
+function sortNotifications(notificationsToSort: Notification[]) {
+  return [...notificationsToSort].sort((a, b) => {
+    const aDate = a.created_at ? new Date(a.created_at).getTime() : 0
+    const bDate = b.created_at ? new Date(b.created_at).getTime() : 0
+
+    return bDate - aDate
+  })
 }
 
 function getCurrentTime() {
@@ -416,4 +494,3 @@ function MetricCard({
     </Card>
   )
 }
-

@@ -1,15 +1,64 @@
 import { Ionicons } from '@expo/vector-icons'
 import { LinearGradient } from 'expo-linear-gradient'
-import { ScrollView, StyleSheet, Text, View } from 'react-native'
+import { useEffect, useState } from 'react'
+import { ScrollView, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { Card } from '@/components/layout/card/Card'
 import { colors } from '@/constants/theme'
-import { marsMapPoints, MapPointType, mission } from '@/data/marslink'
+import { apiGet } from '@/services/api'
 import { styles } from '@/styles/map-styles'
+import { MapPoint, MapPointType, Mission } from '@/types/marslink'
 
 export default function MapScreen() {
-  const riskPoints = marsMapPoints.filter((point) => point.type === 'danger').length
+  const [mission, setMission] = useState<Mission | null>(null)
+  const [marsMapPoints, setMarsMapPoints] = useState<MapPoint[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  async function loadData() {
+    try {
+      setLoading(true)
+
+      const [missionData, mapPointsData] = await Promise.all([
+        apiGet<Mission>('/mission'),
+        apiGet<MapPoint[]>('/map-points'),
+      ])
+
+      setMission(missionData)
+      setMarsMapPoints(mapPointsData)
+    } catch (error) {
+      console.error('Erro ao carregar mapa:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading || !mission) {
+    return (
+      <SafeAreaView edges={['top']} style={styles.container}>
+        <View
+          style={{
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
+          <Text style={{ color: colors.white }}>
+            Carregando mapa...
+          </Text>
+        </View>
+      </SafeAreaView>
+    )
+  }
+
+  const riskPoints = marsMapPoints.filter(
+    (point) => point.type === 'danger',
+  ).length
+
   const operationalPoints = marsMapPoints.filter(
     (point) => point.status === 'Operacional',
   ).length
@@ -29,7 +78,11 @@ export default function MapScreen() {
           </View>
 
           <View style={styles.statusBadge}>
-            <Ionicons name="planet-outline" size={15} color={colors.orange} />
+            <Ionicons
+              name="planet-outline"
+              size={15}
+              color={colors.orange}
+            />
             <Text style={styles.statusText}>MARTE</Text>
           </View>
         </View>
@@ -41,27 +94,47 @@ export default function MapScreen() {
           style={styles.heroCard}
         >
           <View style={styles.heroIcon}>
-            <Ionicons name="map-outline" size={26} color={colors.orange} />
+            <Ionicons
+              name="map-outline"
+              size={26}
+              color={colors.orange}
+            />
           </View>
 
-          <Text style={styles.heroLabel}>Reconhecimento territorial</Text>
+          <Text style={styles.heroLabel}>
+            Reconhecimento territorial
+          </Text>
 
-          <Text style={styles.heroTitle}>Mapa operacional da missão</Text>
+          <Text style={styles.heroTitle}>
+            Mapa operacional da missão
+          </Text>
 
           <Text style={styles.heroText}>
-            Visualização simulada dos principais pontos da região de exploração:
+            Visualização dos principais pontos da região de exploração:
             base, coleta, comunicação, energia e zonas de atenção.
           </Text>
 
           <View style={styles.heroFooter}>
             <View style={styles.heroInfo}>
-              <Ionicons name="location-outline" size={16} color="#FED7AA" />
-              <Text style={styles.heroInfoText}>{mission.location}</Text>
+              <Ionicons
+                name="location-outline"
+                size={16}
+                color="#FED7AA"
+              />
+              <Text style={styles.heroInfoText}>
+                {mission.location}
+              </Text>
             </View>
 
             <View style={styles.heroInfo}>
-              <Ionicons name="warning-outline" size={16} color="#FED7AA" />
-              <Text style={styles.heroInfoText}>{riskPoints} zona de risco</Text>
+              <Ionicons
+                name="warning-outline"
+                size={16}
+                color="#FED7AA"
+              />
+              <Text style={styles.heroInfoText}>
+                {riskPoints} zona de risco
+              </Text>
             </View>
           </View>
         </LinearGradient>
@@ -96,7 +169,9 @@ export default function MapScreen() {
           />
         </View>
 
-        <Text style={styles.sectionTitle}>Mapa da região</Text>
+        <Text style={styles.sectionTitle}>
+          Mapa da região
+        </Text>
 
         <Card style={styles.mapCard}>
           <View style={styles.mapArea}>
@@ -116,8 +191,10 @@ export default function MapScreen() {
                   {
                     left: `${point.x}%`,
                     top: `${point.y}%`,
-                    backgroundColor: getPointConfig(point.type).background,
-                    borderColor: getPointConfig(point.type).color,
+                    backgroundColor:
+                      getPointConfig(point.type).background,
+                    borderColor:
+                      getPointConfig(point.type).color,
                   },
                 ]}
               >
@@ -139,32 +216,73 @@ export default function MapScreen() {
           </View>
         </Card>
 
-        <Text style={styles.sectionTitle}>Pontos da missão</Text>
+        <Text style={styles.sectionTitle}>
+          Pontos da missão
+        </Text>
 
         {marsMapPoints.map((point) => {
           const config = getPointConfig(point.type)
 
           return (
-            <Card key={point.id} style={styles.pointCard}>
+            <Card
+              key={point.id}
+              style={styles.pointCard}
+            >
               <View style={styles.pointHeader}>
-                <View style={[styles.pointIcon, { backgroundColor: config.background }]}>
-                  <Ionicons name={config.icon} size={22} color={config.color} />
+                <View
+                  style={[
+                    styles.pointIcon,
+                    {
+                      backgroundColor:
+                        config.background,
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name={config.icon}
+                    size={22}
+                    color={config.color}
+                  />
                 </View>
 
                 <View style={styles.pointContent}>
-                  <Text style={styles.pointName}>{point.name}</Text>
-                  <Text style={styles.pointDescription}>{point.description}</Text>
+                  <Text style={styles.pointName}>
+                    {point.name}
+                  </Text>
+
+                  <Text
+                    style={styles.pointDescription}
+                  >
+                    {point.description}
+                  </Text>
                 </View>
               </View>
 
               <View style={styles.pointFooter}>
-                <View style={[styles.pointBadge, { backgroundColor: config.background }]}>
-                  <Text style={[styles.pointBadgeText, { color: config.color }]}>
+                <View
+                  style={[
+                    styles.pointBadge,
+                    {
+                      backgroundColor:
+                        config.background,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.pointBadgeText,
+                      {
+                        color: config.color,
+                      },
+                    ]}
+                  >
                     {config.label}
                   </Text>
                 </View>
 
-                <Text style={styles.pointStatus}>{point.status}</Text>
+                <Text style={styles.pointStatus}>
+                  {point.status}
+                </Text>
               </View>
             </Card>
           )
@@ -174,12 +292,7 @@ export default function MapScreen() {
   )
 }
 
-function getPointConfig(type: MapPointType): {
-  label: string
-  icon: keyof typeof Ionicons.glyphMap
-  color: string
-  background: string
-} {
+function getPointConfig(type: MapPointType) {
   const config = {
     base: {
       label: 'Base',
@@ -216,35 +329,62 @@ function getPointConfig(type: MapPointType): {
   return config[type]
 }
 
-function LegendItem({ type, label }: { type: MapPointType; label: string }) {
+function LegendItem({
+  type,
+  label,
+}: {
+  type: MapPointType
+  label: string
+}) {
   const config = getPointConfig(type)
 
   return (
     <View style={styles.legendItem}>
-      <View style={[styles.legendDot, { backgroundColor: config.color }]} />
-      <Text style={styles.legendText}>{label}</Text>
+      <View
+        style={[
+          styles.legendDot,
+          { backgroundColor: config.color },
+        ]}
+      />
+      <Text style={styles.legendText}>
+        {label}
+      </Text>
     </View>
   )
 }
 
-type MetricCardProps = {
+function MetricCard({
+  icon,
+  label,
+  value,
+  description,
+}: {
   icon: keyof typeof Ionicons.glyphMap
   label: string
   value: string
   description: string
-}
-
-function MetricCard({ icon, label, value, description }: MetricCardProps) {
+}) {
   return (
     <Card style={styles.metricCard}>
       <View style={styles.metricIcon}>
-        <Ionicons name={icon} size={22} color={colors.orange} />
+        <Ionicons
+          name={icon}
+          size={22}
+          color={colors.orange}
+        />
       </View>
 
-      <Text style={styles.metricLabel}>{label}</Text>
-      <Text style={styles.metricValue}>{value}</Text>
-      <Text style={styles.metricDescription}>{description}</Text>
+      <Text style={styles.metricLabel}>
+        {label}
+      </Text>
+
+      <Text style={styles.metricValue}>
+        {value}
+      </Text>
+
+      <Text style={styles.metricDescription}>
+        {description}
+      </Text>
     </Card>
   )
 }
-

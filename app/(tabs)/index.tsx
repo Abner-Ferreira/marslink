@@ -1,31 +1,107 @@
 import { Ionicons } from '@expo/vector-icons'
 import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { Image, ScrollView, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { Card } from '@/components/layout/card/Card'
 import { getMissionTheme } from '@/constants/mission-theme'
 import { colors } from '@/constants/theme'
-import {
-  crew,
-  messages,
-  mission,
-  systemMetricsHistory,
-  tasks,
-} from '@/data/marslink'
-import { missionLogs } from '@/data/mission-logs'
+import { apiGet } from '@/services/api'
 import { styles } from '@/styles/index-styles'
+import {
+  CrewMember,
+  Message,
+  Mission,
+  MissionLog,
+  Notification,
+  Task,
+} from '@/types/marslink'
+import { useEffect, useMemo, useState } from 'react'
 
 export default function HomeScreen() {
+  const [mission, setMission] = useState<Mission | null>(null)
+  const [messages, setMessages] = useState<Message[]>([])
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [crew, setCrew] = useState<CrewMember[]>([])
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [missionLogs, setMissionLogs] = useState<MissionLog[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  async function loadData() {
+    try {
+      setLoading(true)
+
+      const [
+        missionData,
+        messagesData,
+        tasksData,
+        crewData,
+        notificationsData,
+        missionLogsData,
+      ] = await Promise.all([
+        apiGet<Mission>('/mission'),
+        apiGet<Message[]>('/messages'),
+        apiGet<Task[]>('/tasks'),
+        apiGet<CrewMember[]>('/crew'),
+        apiGet<Notification[]>('/notifications'),
+        apiGet<MissionLog[]>('/mission-logs'),
+      ])
+
+      setMission(missionData)
+      setMessages(messagesData)
+      setTasks(tasksData)
+      setCrew(crewData)
+      setNotifications(notificationsData)
+      setMissionLogs(missionLogsData)
+    } catch (error) {
+      console.error('Erro ao carregar home:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const orderedMessages = useMemo(() => sortMessagesByTime(messages), [messages])
+  const orderedLogs = useMemo(() => sortLogsByCreatedAt(missionLogs), [missionLogs])
+
+  if (loading || !mission) {
+    return (
+      <SafeAreaView edges={['top']} style={styles.container}>
+        <View
+          style={{
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+            paddingHorizontal: 20,
+          }}
+        >
+          <Text style={{ color: colors.white, fontSize: 16, fontWeight: '800' }}>
+            Carregando missão...
+          </Text>
+        </View>
+      </SafeAreaView>
+    )
+  }
+
   const missionTheme = getMissionTheme(mission.status)
 
   const pendingTasks = tasks.filter((task) => task.status === 'Pendente').length
   const inProgressTasks = tasks.filter((task) => task.status === 'Em andamento').length
   const criticalTasks = tasks.filter((task) => task.priority === 'critical').length
   const receivedMessages = messages.filter((message) => message.direction === 'received').length
-  const lastMessage = messages[messages.length - 1]
-  const latestLogs = missionLogs.slice(-4).reverse()
+  const unreadNotifications = notifications.filter((notification) => notification.unread).length
+  const lastMessage = orderedMessages[orderedMessages.length - 1]
+  const latestLogs = orderedLogs.slice(0, 4)
+
+  const systemMetricsHistory = {
+    energy: createMetricHistory(mission.energy, 6, 3),
+    oxygen: createMetricHistory(mission.oxygen, 6, 1),
+    temperature: createTemperatureHistory(mission.temperature, 6),
+  }
 
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
@@ -78,13 +154,13 @@ export default function HomeScreen() {
             <View style={styles.heroInfo}>
               <Ionicons name="radio-outline" size={18} color={missionTheme.primary} />
               <Text style={styles.heroInfoText}>
-                Janela: {mission.communicationWindow}
+                Janela: {mission.communication_window}
               </Text>
             </View>
 
             <View style={styles.heroInfo}>
               <Ionicons name="planet-outline" size={18} color={missionTheme.primary} />
-              <Text style={styles.heroInfoText}>{mission.externalCondition}</Text>
+              <Text style={styles.heroInfoText}>{mission.external_condition}</Text>
             </View>
           </View>
         </LinearGradient>
@@ -118,10 +194,10 @@ export default function HomeScreen() {
           />
 
           <MetricCard
-            icon="water-outline"
-            label="Oxigênio"
-            value={`${mission.oxygen}%`}
-            description="módulo"
+            icon="notifications-outline"
+            label="Alertas"
+            value={String(unreadNotifications)}
+            description="não lidos"
             color={missionTheme.primary}
             background={missionTheme.dark}
           />
@@ -151,7 +227,7 @@ export default function HomeScreen() {
           <StatusIndicator
             icon="radio-outline"
             label="Comunicação"
-            value={mission.energy}
+            value={getCommunicationValue(mission.communication_status)}
             suffix="%"
             color={colors.orange}
             background="#431407"
@@ -164,7 +240,7 @@ export default function HomeScreen() {
           <TelemetryChart
             title="Energia"
             value={`${mission.energy}%`}
-            description="Histórico do sistema energético"
+            description="Histórico estimado do sistema energético"
             icon="battery-charging-outline"
             data={systemMetricsHistory.energy}
             suffix="%"
@@ -194,7 +270,7 @@ export default function HomeScreen() {
           <TelemetryChart
             title="Temperatura externa"
             value={mission.temperature}
-            description="Variação registrada na superfície"
+            description="Variação estimada na superfície"
             icon="thermometer-outline"
             data={systemMetricsHistory.temperature}
             suffix="°C"
@@ -214,20 +290,26 @@ export default function HomeScreen() {
         </View>
 
         <Card style={styles.timelineCard}>
-          {latestLogs.map((log, index) => (
-            <View key={log.id} style={styles.timelineItem}>
-              <View style={styles.timelineLeft}>
-                <View style={styles.timelineDot} />
-                {index !== latestLogs.length - 1 && <View style={styles.timelineLine} />}
-              </View>
+          {latestLogs.length > 0 ? (
+            latestLogs.map((log, index) => (
+              <View key={log.id} style={styles.timelineItem}>
+                <View style={styles.timelineLeft}>
+                  <View style={styles.timelineDot} />
+                  {index !== latestLogs.length - 1 && <View style={styles.timelineLine} />}
+                </View>
 
-              <View style={styles.timelineContent}>
-                <Text style={styles.timelineTime}>{log.time}</Text>
-                <Text style={styles.timelineTitle}>{log.title}</Text>
-                <Text style={styles.timelineDescription}>{log.description}</Text>
+                <View style={styles.timelineContent}>
+                  <Text style={styles.timelineTime}>{log.time}</Text>
+                  <Text style={styles.timelineTitle}>{log.title}</Text>
+                  <Text style={styles.timelineDescription}>{log.description}</Text>
+                </View>
               </View>
-            </View>
-          ))}
+            ))
+          ) : (
+            <Text style={styles.timelineDescription}>
+              Nenhum log registrado até o momento.
+            </Text>
+          )}
         </Card>
 
         <Text style={styles.sectionTitle}>Status operacional</Text>
@@ -235,8 +317,8 @@ export default function HomeScreen() {
         <Card style={styles.operationCard}>
           <OperationItem
             icon="pulse-outline"
-            title="Tripulação estável"
-            text={`${crew.length} astronautas monitorados com sinais dentro da normalidade.`}
+            title="Tripulação monitorada"
+            text={`${crew.length} astronautas monitorados pelo sistema biomédico.`}
             color={colors.green}
           />
 
@@ -245,7 +327,7 @@ export default function HomeScreen() {
           <OperationItem
             icon="planet-outline"
             title="Ambiente externo"
-            text={`Temperatura marciana registrada em ${mission.temperature}. Condição: ${mission.externalCondition}.`}
+            text={`Temperatura marciana registrada em ${mission.temperature}. Condição: ${mission.external_condition}.`}
             color={missionTheme.primary}
           />
 
@@ -262,21 +344,31 @@ export default function HomeScreen() {
         <Text style={styles.sectionTitle}>Última comunicação</Text>
 
         <Card style={styles.messageCard}>
-          <View style={styles.messageHeader}>
-            <View>
-              <Text style={styles.messageFrom}>{lastMessage.sender}</Text>
-              <Text style={styles.messageTime}>Registrada às {lastMessage.time}</Text>
-            </View>
+          {lastMessage ? (
+            <>
+              <View style={styles.messageHeader}>
+                <View>
+                  <Text style={styles.messageFrom}>{lastMessage.sender}</Text>
+                  <Text style={styles.messageTime}>
+                    Registrada às {lastMessage.time}
+                  </Text>
+                </View>
 
-            <View style={[styles.messageStatus, { backgroundColor: missionTheme.dark }]}>
-              <Ionicons name="checkmark-done-outline" size={16} color={missionTheme.primary} />
-              <Text style={[styles.messageStatusText, { color: missionTheme.primary }]}>
-                {getMessageStatusLabel(lastMessage.status)}
-              </Text>
-            </View>
-          </View>
+                <View style={[styles.messageStatus, { backgroundColor: missionTheme.dark }]}>
+                  <Ionicons name="checkmark-done-outline" size={16} color={missionTheme.primary} />
+                  <Text style={[styles.messageStatusText, { color: missionTheme.primary }]}>
+                    {getMessageStatusLabel(lastMessage.status)}
+                  </Text>
+                </View>
+              </View>
 
-          <Text style={styles.messageText}>{lastMessage.content}</Text>
+              <Text style={styles.messageText}>{lastMessage.content}</Text>
+            </>
+          ) : (
+            <Text style={styles.messageText}>
+              Nenhuma comunicação registrada até o momento.
+            </Text>
+          )}
         </Card>
 
         <Text style={styles.sectionTitle}>Imagem da missão</Text>
@@ -290,6 +382,54 @@ export default function HomeScreen() {
       </ScrollView>
     </SafeAreaView>
   )
+}
+
+function sortMessagesByTime(messagesToSort: Message[]) {
+  return [...messagesToSort].sort((a, b) => {
+    const [aHour, aMinute] = a.time.split(':').map(Number)
+    const [bHour, bMinute] = b.time.split(':').map(Number)
+
+    return aHour * 60 + aMinute - (bHour * 60 + bMinute)
+  })
+}
+
+function sortLogsByCreatedAt(logs: MissionLog[]) {
+  return [...logs].sort((a, b) => {
+    const aDate = a.created_at ? new Date(a.created_at).getTime() : 0
+    const bDate = b.created_at ? new Date(b.created_at).getTime() : 0
+
+    return bDate - aDate
+  })
+}
+
+function createMetricHistory(currentValue: number, length: number, variation: number) {
+  return Array.from({ length }, (_, index) => {
+    const distance = length - index - 1
+    const value = currentValue + distance * variation
+
+    return Math.min(100, Math.max(0, value))
+  })
+}
+
+function createTemperatureHistory(temperature: string, length: number) {
+  const currentValue = Number(temperature.replace('°C', ''))
+
+  if (Number.isNaN(currentValue)) {
+    return [-39, -40, -41, -42, -42, -42]
+  }
+
+  return Array.from({ length }, (_, index) => currentValue + index - length + 1)
+}
+
+function getCommunicationValue(status: string) {
+  const normalizedStatus = status.toLowerCase()
+
+  if (normalizedStatus.includes('aberta')) return 100
+  if (normalizedStatus.includes('sincron')) return 75
+  if (normalizedStatus.includes('instável')) return 45
+  if (normalizedStatus.includes('offline')) return 20
+
+  return 80
 }
 
 function getMessageStatusLabel(status: string) {
@@ -460,4 +600,3 @@ function getBarHeight(value: number, minValue: number, maxValue: number) {
 
   return 18 + clamped * 70
 }
-

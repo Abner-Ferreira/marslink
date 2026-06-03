@@ -1,12 +1,11 @@
 import { Ionicons } from '@expo/vector-icons'
 import { LinearGradient } from 'expo-linear-gradient'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   DimensionValue,
   Modal,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TouchableOpacity,
   View,
@@ -15,30 +14,79 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { Card } from '@/components/layout/card/Card'
 import { colors } from '@/constants/theme'
-import { crew, mission } from '@/data/marslink'
+import { apiGet } from '@/services/api'
 import { styles } from '@/styles/health-styles'
-
-type CrewMember = (typeof crew)[number]
+import { CrewMember, Mission } from '@/types/marslink'
 
 export default function HealthScreen() {
+  const [mission, setMission] = useState<Mission | null>(null)
+  const [crew, setCrew] = useState<CrewMember[]>([])
   const [selectedMember, setSelectedMember] = useState<CrewMember | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  async function loadData() {
+    try {
+      setLoading(true)
+
+      const [missionData, crewData] = await Promise.all([
+        apiGet<Mission>('/mission'),
+        apiGet<CrewMember[]>('/crew'),
+      ])
+
+      setMission(missionData)
+      setCrew(crewData)
+    } catch (error) {
+      console.error('Erro ao carregar saúde:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading || !mission) {
+    return (
+      <SafeAreaView edges={['top']} style={styles.container}>
+        <View
+          style={{
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+            paddingHorizontal: 20,
+          }}
+        >
+          <Text style={{ color: colors.white, fontSize: 16, fontWeight: '800' }}>
+            Carregando saúde da tripulação...
+          </Text>
+        </View>
+      </SafeAreaView>
+    )
+  }
 
   const totalCrew = crew.length
   const stableCrew = crew.filter((member) => member.status === 'OK').length
 
-  const averageBpm = Math.round(
-    crew.reduce((total, member) => total + member.bpm, 0) / totalCrew,
-  )
+  const averageBpm =
+    totalCrew > 0
+      ? Math.round(crew.reduce((total, member) => total + member.bpm, 0) / totalCrew)
+      : 0
 
-  const averageOxygen = Math.round(
-    crew.reduce((total, member) => total + member.oxygen, 0) / totalCrew,
-  )
+  const averageOxygen =
+    totalCrew > 0
+      ? Math.round(
+          crew.reduce((total, member) => total + member.oxygen, 0) / totalCrew,
+        )
+      : 0
 
   const averageTemperature =
-    crew.reduce((total, member) => {
-      const value = Number(member.temperature.replace('°C', ''))
-      return total + value
-    }, 0) / totalCrew
+    totalCrew > 0
+      ? crew.reduce((total, member) => {
+          const value = Number(member.temperature.replace('°C', ''))
+          return total + value
+        }, 0) / totalCrew
+      : 0
 
   const healthAlerts = crew.filter(
     (member) => member.bpm > 95 || member.oxygen < 94,
@@ -78,7 +126,7 @@ export default function HealthScreen() {
           </Text>
 
           <Text style={styles.heroText}>
-            Indicadores biomédicos simulados da tripulação durante a missão em{' '}
+            Indicadores biomédicos da tripulação durante a missão em{' '}
             {mission.location}.
           </Text>
 
@@ -274,16 +322,22 @@ export default function HealthScreen() {
         ))}
       </ScrollView>
 
-      <CrewDetailsModal member={selectedMember} onClose={() => setSelectedMember(null)} />
+      <CrewDetailsModal
+        member={selectedMember}
+        mission={mission}
+        onClose={() => setSelectedMember(null)}
+      />
     </SafeAreaView>
   )
 }
 
 function CrewDetailsModal({
   member,
+  mission,
   onClose,
 }: {
   member: CrewMember | null
+  mission: Mission
   onClose: () => void
 }) {
   if (!member) return null
@@ -497,4 +551,3 @@ function VitalItem({
     </View>
   )
 }
-

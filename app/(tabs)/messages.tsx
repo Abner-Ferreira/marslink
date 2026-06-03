@@ -1,11 +1,10 @@
 import { Ionicons } from '@expo/vector-icons'
 import { LinearGradient } from 'expo-linear-gradient'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
@@ -15,32 +14,45 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { Card } from '@/components/layout/card/Card'
 import { colors } from '@/constants/theme'
-import {
-  MessageDirection,
-  MessageStatus as MarslinkMessageStatus,
-  messages as initialMessages,
-  mission,
-} from '@/data/marslink'
+import { API_URL, apiGet, apiPost } from '@/services/api'
 import { styles } from '@/styles/messages-styles'
-
-type Message = {
-  id: string
-  sender: string
-  content: string
-  time: string
-  status: MarslinkMessageStatus
-  direction: MessageDirection
-}
+import {
+  Message,
+  MessageStatus as MarslinkMessageStatus,
+  Mission,
+} from '@/types/marslink'
 
 export default function MessagesScreen() {
   const scrollViewRef = useRef<ScrollView>(null)
 
+  const [mission, setMission] = useState<Mission | null>(null)
   const [messageText, setMessageText] = useState('')
   const [search, setSearch] = useState('')
   const [isOffline, setIsOffline] = useState(false)
-  const [messages, setMessages] = useState<Message[]>(
-    sortMessagesByTime(initialMessages),
-  )
+  const [messages, setMessages] = useState<Message[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  async function loadData() {
+    try {
+      setLoading(true)
+
+      const [missionData, messagesData] = await Promise.all([
+        apiGet<Mission>('/mission'),
+        apiGet<Message[]>('/messages'),
+      ])
+
+      setMission(missionData)
+      setMessages(sortMessagesByTime(messagesData))
+    } catch (error) {
+      console.error('Erro ao carregar mensagens:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const receivedMessages = useMemo(
     () => messages.filter((message) => message.direction === 'received').length,
@@ -87,13 +99,13 @@ export default function MessagesScreen() {
     )
   }, [messages, search])
 
-  function handleSendMessage() {
+  async function handleSendMessage() {
     const trimmedMessage = messageText.trim()
 
     if (!trimmedMessage) return
 
-    const newMessage: Message = {
-      id: String(Date.now()),
+    const localMessage: Message = {
+      id: Date.now() * -1,
       sender: 'Você',
       content: trimmedMessage,
       time: getCurrentTime(),
@@ -101,7 +113,7 @@ export default function MessagesScreen() {
       direction: 'sent',
     }
 
-    setMessages((currentMessages) => [...currentMessages, newMessage])
+    setMessages((currentMessages) => [...currentMessages, localMessage])
     setMessageText('')
 
     setTimeout(() => {
@@ -109,7 +121,31 @@ export default function MessagesScreen() {
     }, 100)
 
     if (!isOffline) {
-      simulateMessageDelivery(newMessage.id)
+      await sendMessageToApi(localMessage)
+    }
+  }
+
+  async function sendMessageToApi(localMessage: Message) {
+    try {
+      const createdMessage = await apiPost<Message>('/messages', {
+        sender: localMessage.sender,
+        content: localMessage.content,
+        time: localMessage.time,
+        status: localMessage.status,
+        direction: localMessage.direction,
+      })
+
+      setMessages((currentMessages) =>
+        sortMessagesByTime(
+          currentMessages.map((message) =>
+            message.id === localMessage.id ? createdMessage : message,
+          ),
+        ),
+      )
+
+      simulateMessageDelivery(createdMessage.id)
+    } catch (error) {
+      console.error('Erro ao enviar mensagem:', error)
     }
   }
 
@@ -129,17 +165,20 @@ export default function MessagesScreen() {
 
   function processQueuedMessages() {
     const queued = messages.filter(
-      (message) => message.direction === 'sent' && message.status === 'sending',
+      (message) =>
+        message.direction === 'sent' &&
+        message.status === 'sending' &&
+        message.id < 0,
     )
 
     queued.forEach((message, index) => {
       setTimeout(() => {
-        simulateMessageDelivery(message.id)
+        sendMessageToApi(message)
       }, index * 700)
     })
   }
 
-  function simulateMessageDelivery(id: string) {
+  function simulateMessageDelivery(id: number) {
     setTimeout(() => {
       updateMessageStatus(id, 'in_transit')
     }, 1500)
@@ -153,7 +192,7 @@ export default function MessagesScreen() {
     }, 5500)
   }
 
-  function updateMessageStatus(id: string, status: MarslinkMessageStatus) {
+  async function updateMessageStatus(id: number, status: MarslinkMessageStatus) {
     setMessages((currentMessages) =>
       currentMessages.map((message) =>
         message.id === id
@@ -163,6 +202,35 @@ export default function MessagesScreen() {
             }
           : message,
       ),
+    )
+
+    if (id < 0) return
+
+    try {
+      await apiPatch<Message>(`/messages/${id}/status`, {
+        status,
+      })
+    } catch (error) {
+      console.error('Erro ao atualizar status da mensagem:', error)
+    }
+  }
+
+  if (loading || !mission) {
+    return (
+      <SafeAreaView edges={['top']} style={styles.container}>
+        <View
+          style={{
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+            paddingHorizontal: 20,
+          }}
+        >
+          <Text style={{ color: colors.white, fontSize: 16, fontWeight: '800' }}>
+            Carregando comunicação...
+          </Text>
+        </View>
+      </SafeAreaView>
     )
   }
 
@@ -270,7 +338,7 @@ export default function MessagesScreen() {
               <View style={styles.footerItem}>
                 <Ionicons name="time-outline" size={16} color="#FED7AA" />
                 <Text style={styles.footerText}>
-                  Próxima janela: {mission.communicationWindow}
+                  Próxima janela: {mission.communication_window}
                 </Text>
               </View>
 
@@ -474,7 +542,7 @@ export default function MessagesScreen() {
                 <Text style={styles.offlineText}>
                   Se a comunicação cair, novas mensagens ficam salvas em fila e
                   são sincronizadas na próxima janela às{' '}
-                  {mission.communicationWindow}.
+                  {mission.communication_window}.
                 </Text>
               </View>
             </View>
@@ -509,6 +577,22 @@ export default function MessagesScreen() {
       </KeyboardAvoidingView>
     </SafeAreaView>
   )
+}
+
+async function apiPatch<T>(endpoint: string, body: unknown): Promise<T> {
+  const response = await fetch(`${API_URL}${endpoint}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  })
+
+  if (!response.ok) {
+    throw new Error(`Erro ao atualizar ${endpoint}`)
+  }
+
+  return response.json()
 }
 
 function sortMessagesByTime(messagesToSort: Message[]) {
@@ -638,4 +722,3 @@ function MessageStatus({ status }: { status: MarslinkMessageStatus }) {
     </View>
   )
 }
-

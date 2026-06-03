@@ -1,29 +1,77 @@
 import { Ionicons } from '@expo/vector-icons'
 import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { useEffect, useState } from 'react'
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { Card } from '@/components/layout/card/Card'
 import { colors } from '@/constants/theme'
-import { mission } from '@/data/marslink'
+import { apiGet } from '@/services/api'
 import { styles } from '@/styles/more-styles'
+import { Mission } from '@/types/marslink'
 
 export default function MoreScreen() {
+  const [mission, setMission] = useState<Mission | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    loadMission()
+  }, [])
+
+  async function loadMission() {
+    try {
+      const missionData = await apiGet<Mission>('/mission')
+      setMission(missionData)
+    } catch (error) {
+      console.error('Erro ao carregar missão:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading || !mission) {
+    return (
+      <SafeAreaView edges={['top']} style={styles.container}>
+        <View
+          style={{
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
+          <Text style={{ color: colors.white }}>
+            Carregando módulos...
+          </Text>
+        </View>
+      </SafeAreaView>
+    )
+  }
+
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.header}>
           <View>
             <Text style={styles.title}>Mais</Text>
+
             <Text style={styles.subtitle}>
               {mission.name} — Sol {mission.sol}
             </Text>
           </View>
 
           <View style={styles.statusBadge}>
-            <Ionicons name="grid-outline" size={15} color={colors.orange} />
-            <Text style={styles.statusText}>MÓDULOS</Text>
+            <Ionicons
+              name="grid-outline"
+              size={15}
+              color={colors.orange}
+            />
+            <Text style={styles.statusText}>
+              MÓDULOS
+            </Text>
           </View>
         </View>
 
@@ -34,20 +82,30 @@ export default function MoreScreen() {
           style={styles.heroCard}
         >
           <View style={styles.heroIcon}>
-            <Ionicons name="rocket-outline" size={26} color={colors.orange} />
+            <Ionicons
+              name="rocket-outline"
+              size={26}
+              color={colors.orange}
+            />
           </View>
 
-          <Text style={styles.heroLabel}>Centro de módulos</Text>
+          <Text style={styles.heroLabel}>
+            Centro de módulos
+          </Text>
 
-          <Text style={styles.heroTitle}>Recursos avançados da missão</Text>
+          <Text style={styles.heroTitle}>
+            Recursos avançados da missão
+          </Text>
 
           <Text style={styles.heroText}>
-            Acesse mapa, alertas, log da missão e protocolos de emergência sem
-            poluir a navegação principal.
+            Acesse mapa, alertas, log da missão e protocolos
+            de emergência sem poluir a navegação principal.
           </Text>
         </LinearGradient>
 
-        <Text style={styles.sectionTitle}>Módulos disponíveis</Text>
+        <Text style={styles.sectionTitle}>
+          Módulos disponíveis
+        </Text>
 
         <ModuleCard
           icon="map-outline"
@@ -113,19 +171,41 @@ function ModuleCard({
       accessibilityLabel={accessibilityLabel}
       accessibilityHint={description}
     >
-      <Card style={[styles.moduleCard, danger && styles.moduleCardDanger]}>
-        <View style={[styles.moduleIcon, { backgroundColor: background }]}>
-          <Ionicons name={icon} size={24} color={color} />
+      <Card
+        style={[
+          styles.moduleCard,
+          danger && styles.moduleCardDanger,
+        ]}
+      >
+        <View
+          style={[
+            styles.moduleIcon,
+            { backgroundColor: background },
+          ]}
+        >
+          <Ionicons
+            name={icon}
+            size={24}
+            color={color}
+          />
         </View>
 
         <View style={styles.moduleContent}>
-          <Text style={styles.moduleTitle}>{title}</Text>
-          <Text style={styles.moduleDescription}>{description}</Text>
+          <Text style={styles.moduleTitle}>
+            {title}
+          </Text>
+
+          <Text style={styles.moduleDescription}>
+            {description}
+          </Text>
         </View>
 
-        <Ionicons name="chevron-forward" size={22} color={colors.muted} />
+        <Ionicons
+          name="chevron-forward"
+          size={22}
+          color={colors.muted}
+        />
       </Card>
     </TouchableOpacity>
   )
 }
-

@@ -1,11 +1,10 @@
 import { Ionicons } from '@expo/vector-icons'
 import { LinearGradient } from 'expo-linear-gradient'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Modal,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
@@ -15,17 +14,41 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { Card } from '@/components/layout/card/Card'
 import { colors } from '@/constants/theme'
-import { mission, tasks } from '@/data/marslink'
+import { apiGet } from '@/services/api'
 import { styles } from '@/styles/tasks-styles'
-
-type Task = (typeof tasks)[number]
+import { Mission, Task } from '@/types/marslink'
 
 type TaskFilter = 'all' | 'pending' | 'inProgress' | 'critical'
 
 export default function TasksScreen() {
+  const [mission, setMission] = useState<Mission | null>(null)
+  const [tasks, setTasks] = useState<Task[]>([])
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [selectedFilter, setSelectedFilter] = useState<TaskFilter>('all')
   const [search, setSearch] = useState('')
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  async function loadData() {
+    try {
+      setLoading(true)
+
+      const [missionData, tasksData] = await Promise.all([
+        apiGet<Mission>('/mission'),
+        apiGet<Task[]>('/tasks'),
+      ])
+
+      setMission(missionData)
+      setTasks(tasksData)
+    } catch (error) {
+      console.error('Erro ao carregar tarefas:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const pendingTasks = tasks.filter((task) => task.status === 'Pendente').length
   const inProgressTasks = tasks.filter((task) => task.status === 'Em andamento').length
@@ -52,7 +75,26 @@ export default function TasksScreen() {
 
       return matchesFilter && matchesSearch
     })
-  }, [selectedFilter, search])
+  }, [selectedFilter, search, tasks])
+
+  if (loading || !mission) {
+    return (
+      <SafeAreaView edges={['top']} style={styles.container}>
+        <View
+          style={{
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+            paddingHorizontal: 20,
+          }}
+        >
+          <Text style={{ color: colors.white, fontSize: 16, fontWeight: '800' }}>
+            Carregando tarefas...
+          </Text>
+        </View>
+      </SafeAreaView>
+    )
+  }
 
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
@@ -268,16 +310,22 @@ export default function TasksScreen() {
         )}
       </ScrollView>
 
-      <TaskDetailsModal task={selectedTask} onClose={() => setSelectedTask(null)} />
+      <TaskDetailsModal
+        task={selectedTask}
+        mission={mission}
+        onClose={() => setSelectedTask(null)}
+      />
     </SafeAreaView>
   )
 }
 
 function TaskDetailsModal({
   task,
+  mission,
   onClose,
 }: {
   task: Task | null
+  mission: Mission
   onClose: () => void
 }) {
   if (!task) return null
@@ -344,7 +392,7 @@ function TaskDetailsModal({
             <InfoItem
               icon="radio-outline"
               label="Janela de comunicação"
-              value={mission.communicationWindow}
+              value={mission.communication_window}
             />
           </View>
 
@@ -511,4 +559,3 @@ function InfoItem({ icon, label, value }: InfoItemProps) {
     </View>
   )
 }
-

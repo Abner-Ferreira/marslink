@@ -14,24 +14,36 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { colors } from '@/constants/theme'
-import { mission } from '@/data/marslink'
+import { apiGet } from '@/services/api'
+import { Mission } from '@/types/marslink'
 
 export default function OnboardingScreen() {
   const [loading, setLoading] = useState(true)
+  const [mission, setMission] = useState<Mission | null>(null)
 
   useEffect(() => {
-    async function verifyOnboarding() {
-      const alreadyViewed = await AsyncStorage.getItem('@marslink:onboarding')
+    async function initialize() {
+      try {
+        const alreadyViewed = await AsyncStorage.getItem(
+          '@marslink:onboarding',
+        )
 
-      if (alreadyViewed) {
-        router.replace('/(tabs)')
-        return
+        if (alreadyViewed) {
+          router.replace('/(tabs)')
+          return
+        }
+
+        const missionData = await apiGet<Mission>('/mission')
+
+        setMission(missionData)
+      } catch (error) {
+        console.error('Erro ao carregar missão:', error)
+      } finally {
+        setLoading(false)
       }
-
-      setLoading(false)
     }
 
-    verifyOnboarding()
+    initialize()
   }, [])
 
   async function handleStartMission() {
@@ -39,7 +51,7 @@ export default function OnboardingScreen() {
     router.replace('/(tabs)')
   }
 
-  if (loading) {
+  if (loading || !mission) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator color={colors.orange} size="large" />
@@ -60,29 +72,46 @@ export default function OnboardingScreen() {
           style={styles.hero}
         >
           <View style={styles.logoIcon}>
-            <Ionicons name="planet-outline" size={42} color={colors.orange} />
+            <Ionicons
+              name="planet-outline"
+              size={42}
+              color={colors.orange}
+            />
           </View>
 
           <Text style={styles.logo}>
-            <Text style={styles.logoHighlight}>Mars</Text>Link
+            <Text style={styles.logoHighlight}>
+              Mars
+            </Text>
+            Link
           </Text>
 
-          <Text style={styles.title}>Controle inteligente para missões em Marte</Text>
+          <Text style={styles.title}>
+            Controle inteligente para missões em Marte
+          </Text>
 
           <Text style={styles.description}>
-            Comunicação assíncrona, monitoramento da tripulação, tarefas,
-            alertas e protocolos de emergência em uma única plataforma.
+            Comunicação assíncrona, monitoramento da tripulação,
+            tarefas, alertas e protocolos de emergência em uma única
+            plataforma.
           </Text>
 
           <View style={styles.missionBadge}>
-            <Ionicons name="rocket-outline" size={17} color={colors.orange} />
+            <Ionicons
+              name="rocket-outline"
+              size={17}
+              color={colors.orange}
+            />
+
             <Text style={styles.missionBadgeText}>
               {mission.name} — Sol {mission.sol}
             </Text>
           </View>
         </LinearGradient>
 
-        <Text style={styles.sectionTitle}>Recursos principais</Text>
+        <Text style={styles.sectionTitle}>
+          Recursos principais
+        </Text>
 
         <FeatureItem
           icon="chatbox-outline"
@@ -113,8 +142,15 @@ export default function OnboardingScreen() {
           activeOpacity={0.85}
           onPress={handleStartMission}
         >
-          <Text style={styles.startButtonText}>Entrar na missão</Text>
-          <Ionicons name="arrow-forward" size={20} color={colors.white} />
+          <Text style={styles.startButtonText}>
+            Entrar na missão
+          </Text>
+
+          <Ionicons
+            name="arrow-forward"
+            size={20}
+            color={colors.white}
+          />
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -133,12 +169,21 @@ function FeatureItem({
   return (
     <View style={styles.featureItem}>
       <View style={styles.featureIcon}>
-        <Ionicons name={icon} size={24} color={colors.orange} />
+        <Ionicons
+          name={icon}
+          size={24}
+          color={colors.orange}
+        />
       </View>
 
       <View style={styles.featureContent}>
-        <Text style={styles.featureTitle}>{title}</Text>
-        <Text style={styles.featureDescription}>{description}</Text>
+        <Text style={styles.featureTitle}>
+          {title}
+        </Text>
+
+        <Text style={styles.featureDescription}>
+          {description}
+        </Text>
       </View>
     </View>
   )

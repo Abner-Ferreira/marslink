@@ -1,5 +1,5 @@
 import { colors } from '@/constants/theme'
-import { MissionStatus } from '@/data/marslink'
+import { MissionStatus } from '@/types/marslink'
 
 export function getMissionTheme(status: MissionStatus) {
   const themes = {
