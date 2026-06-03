@@ -1,0 +1,330 @@
+import { colors } from "@/constants/theme";
+import { StyleSheet } from "react-native";
+
+export const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
+  content: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 110 },
+
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+
+  title: { color: colors.white, fontSize: 28, fontWeight: '900' },
+  subtitle: { color: colors.muted, marginTop: 4 },
+
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#052E16',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 999,
+    gap: 6,
+  },
+
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: colors.green,
+  },
+
+  statusText: { color: colors.green, fontSize: 10, fontWeight: '900' },
+
+  heroCard: { marginTop: 28, borderRadius: 28, padding: 22 },
+  heroIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 18,
+    backgroundColor: '#052E16',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  heroLabel: {
+    color: '#BBF7D0',
+    textTransform: 'uppercase',
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 1,
+    marginTop: 18,
+  },
+
+  heroTitle: {
+    color: colors.white,
+    fontSize: 32,
+    fontWeight: '900',
+    marginTop: 4,
+    lineHeight: 38,
+  },
+
+  heroText: { color: '#E2E8F0', lineHeight: 22, marginTop: 8 },
+
+  heroFooter: { flexDirection: 'row', gap: 10, marginTop: 18, flexWrap: 'wrap' },
+
+  heroInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    paddingHorizontal: 11,
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
+
+  heroInfoText: { color: colors.white, fontWeight: '700', fontSize: 13 },
+
+  metricsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 18 },
+
+  metricCard: { width: '48%', minHeight: 145 },
+
+  metricIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: '#052E16',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+
+  metricLabel: {
+    color: colors.muted,
+    fontSize: 12,
+    textTransform: 'uppercase',
+    fontWeight: '700',
+  },
+
+  metricValue: { color: colors.white, fontSize: 30, fontWeight: '900', marginTop: 6 },
+  metricDescription: { color: colors.text, marginTop: 2, fontSize: 13 },
+
+  sectionTitle: {
+    color: colors.white,
+    fontSize: 20,
+    fontWeight: '900',
+    marginTop: 30,
+    marginBottom: 14,
+  },
+
+  trendCard: { gap: 16 },
+  trendItem: { flexDirection: 'row', gap: 12 },
+  trendIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    backgroundColor: '#052E16',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  trendContent: { flex: 1 },
+  trendLabel: { color: colors.muted, fontSize: 12, fontWeight: '700' },
+  trendValue: { color: colors.white, fontSize: 16, fontWeight: '900', marginTop: 2 },
+  trendDescription: { color: colors.text, lineHeight: 20, marginTop: 4 },
+
+  alertCard: {
+    marginBottom: 14,
+    borderColor: colors.red,
+    flexDirection: 'row',
+    gap: 14,
+  },
+
+  noAlertCard: {
+    flexDirection: 'row',
+    gap: 14,
+    borderColor: colors.green,
+  },
+
+  alertIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 16,
+    backgroundColor: '#450A0A',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  noAlertIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 16,
+    backgroundColor: '#052E16',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  alertContent: { flex: 1 },
+  alertTitle: { color: colors.white, fontSize: 16, fontWeight: '900' },
+  noAlertTitle: { color: colors.white, fontSize: 16, fontWeight: '900' },
+  alertText: { color: colors.text, lineHeight: 21, marginTop: 5 },
+
+  chartCard: { gap: 22 },
+  chartBlock: { gap: 18 },
+  chartHeader: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
+  chartIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 13,
+    backgroundColor: '#052E16',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  chartTitleArea: { flex: 1 },
+  chartTitle: { color: colors.white, fontSize: 16, fontWeight: '900' },
+  chartDescription: { color: colors.muted, fontSize: 13, marginTop: 3, lineHeight: 18 },
+  horizontalChart: { gap: 14 },
+  chartRow: { gap: 7 },
+  chartRowLabel: { color: colors.white, fontSize: 13, fontWeight: '800' },
+  chartBarTrack: {
+    width: '100%',
+    height: 12,
+    borderRadius: 999,
+    backgroundColor: '#0F172A',
+    overflow: 'hidden',
+  },
+  chartBarFill: {
+    height: '100%',
+    borderRadius: 999,
+    backgroundColor: colors.green,
+  },
+  chartRowValue: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'right',
+  },
+  chartDivider: { height: 1, backgroundColor: colors.cardBorder },
+
+  summaryGridCard: { gap: 14 },
+  summaryItem: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  summaryItemIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 13,
+    backgroundColor: '#052E16',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  summaryItemContent: { flex: 1 },
+  summaryItemLabel: {
+    color: colors.muted,
+    fontSize: 12,
+    textTransform: 'uppercase',
+    fontWeight: '700',
+  },
+  summaryItemValue: { color: colors.white, fontSize: 15, fontWeight: '900', marginTop: 2 },
+
+  memberCard: { marginBottom: 14 },
+  memberHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  memberIdentity: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: '#052E16',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.green,
+  },
+  avatarText: { color: colors.green, fontWeight: '900', fontSize: 15 },
+  memberInfo: { flex: 1 },
+  memberName: { color: colors.white, fontSize: 16, fontWeight: '900' },
+  memberRole: { color: colors.muted, marginTop: 3, fontSize: 13 },
+  memberStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#052E16',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  memberStatusText: { color: colors.green, fontSize: 12, fontWeight: '900' },
+
+  vitalGrid: { marginTop: 18, gap: 12 },
+  vitalItem: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  vitalIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    backgroundColor: '#052E16',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  vitalContent: { flex: 1 },
+  vitalLabel: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  vitalValue: { color: colors.white, fontSize: 14, fontWeight: '800', marginTop: 2 },
+  tapHint: { color: colors.orange, fontSize: 12, fontWeight: '800', marginTop: 16 },
+
+  modalOverlay: { flex: 1, justifyContent: 'flex-end' },
+  modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.68)' },
+  modalContent: {
+    backgroundColor: colors.background,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 28,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+  },
+  modalHandle: {
+    width: 46,
+    height: 5,
+    borderRadius: 999,
+    backgroundColor: colors.cardBorder,
+    alignSelf: 'center',
+    marginBottom: 18,
+  },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  modalAvatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 18,
+    backgroundColor: '#052E16',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.green,
+  },
+  modalCloseButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalTitle: { color: colors.white, fontSize: 24, fontWeight: '900', marginTop: 16 },
+  modalSubtitle: { color: colors.muted, marginTop: 4 },
+  modalInfoList: { gap: 13, marginTop: 20 },
+  modalObservationCard: { marginTop: 22, backgroundColor: '#0F172A' },
+  modalObservationTitle: { color: colors.white, fontSize: 15, fontWeight: '900' },
+  modalObservationText: { color: colors.text, lineHeight: 21, marginTop: 8 },
+  modalActionButton: {
+    marginTop: 22,
+    backgroundColor: colors.green,
+    borderRadius: 16,
+    paddingVertical: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  modalActionButtonText: { color: colors.white, fontWeight: '900', fontSize: 15 },
+})
